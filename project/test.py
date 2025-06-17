@@ -9,7 +9,7 @@ import math
 pygame.init()
 
 # Настройки экрана
-WIDTH, HEIGHT = 1280, 720
+WIDTH, HEIGHT = 1280, 720  
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Армрестлинг")
 
@@ -56,7 +56,10 @@ class Game:
         }
     
     def reset_game_state(self):
-        self.current_frame = 35
+        self.current_frame = self.take_length_picture()//2
+        self.animation_frames = self.load_animation_frames()
+        self.high_limit_frames = self.take_length_picture()
+        self.low_limit_frames = 1
         self.score = 0
         self.press_count = 0
         self.start_time = 0
@@ -77,36 +80,38 @@ class Game:
         self.qte_key = None
         self.qte_timer = 0
         self.qte_duration = 2  
-    
+
+    def take_length_picture(self):
+        base_path = os.path.dirname(os.path.abspath(__file__))
+        frames_dir = os.path.join(base_path, f"files_of_game/{self.selected_level + 1}/frames/")
+
+        try:
+            frame_files = sorted(
+            [f for f in os.listdir(frames_dir) if f.endswith('.jpg')],
+            key=lambda x: int(x.split('.')[0])
+            )   
+        except:
+            frame_files = []
+
+        return len(frame_files)
+
+
     def load_animation_frames(self):
         frames = {}
         base_path = os.path.dirname(os.path.abspath(__file__))
+        lenght_ = self.take_length_picture()
         
-        # Загрузка кадров поражения (34-1)
-        for i in range(34, 0, -1):
-            frame_idx = 35 - i
+        for i in range(lenght_, 0, -1):
+            if (self.selected_level == 1): frame_idx = i
+            else: frame_idx = (lenght_ + 1) - i
             try:
-                image_path = os.path.join(base_path, f"lose/{i}.jpg")
+                image_path = os.path.join(base_path, f"files_of_game/{self.selected_level + 1}/frames/{i}.jpg")
                 frames[frame_idx] = pygame.transform.scale(pygame.image.load(image_path), (WIDTH, HEIGHT))
             except:
                 frames[frame_idx] = self.create_color_surface()
         
-        # Центральный кадр (35)
-        try:
-            image_path = os.path.join(base_path, f"static/1.jpg")
-            frames[35] = pygame.transform.scale(pygame.image.load(image_path), (WIDTH, HEIGHT))
-        except:
-            frames[35] = self.create_color_surface()
-        
-        # Загрузка кадров победы (36-69)
-        for i in range(1, 35):
-            frame_idx = 35 + i
-            try:
-                image_path = os.path.join(base_path, f"win/{i}.jpg")
-                frames[frame_idx] = pygame.transform.scale(pygame.image.load(image_path), (WIDTH, HEIGHT))
-            except:
-                frames[frame_idx] = self.create_color_surface()
-        
+       #  if(self.selected_level == 1): return reversed(frames)
+
         return frames
     
     def load_one_frame(self):
@@ -151,6 +156,8 @@ class Game:
     def update(self):
         if self.state == "COUNTDOWN":
             self.update_countdown()
+        elif self.state == "LEVEL_PREVIEW":
+            self.reset_game_state()
         elif self.state == "GAME":
             self.update_gameplay()
         
@@ -208,20 +215,22 @@ class Game:
             self.trigger_screen_shake(15, 1.5)
     
     def update_frame(self, success):
-        if success and self.current_frame < 69:
+        if success and self.current_frame < self.high_limit_frames:
             self.current_frame += 1
             self.score += 1
-            if self.current_frame == 69:
+            if self.current_frame == self.high_limit_frames:
                 self.level_completed = True
                 self.state = "RESULT"
                 self.trigger_screen_shake(20, 2)
-        elif not success and self.current_frame > 1:
+        elif not success and self.current_frame > self.low_limit_frames:
             self.current_frame -= 1
             self.score -= 1
-            if self.current_frame == 1:
+            if self.current_frame == self.low_limit_frames  :
                 self.level_completed = False
                 self.state = "RESULT"
                 self.trigger_screen_shake(25, 2.5)
+
+        print(f"Сейчас {self.current_frame} кадр")
     
     def start_qte_event(self):
         self.qte_active = True
@@ -282,7 +291,7 @@ class Game:
         overlay.fill((0, 0, 0, 150))
         screen.blit(overlay, (0, 0))
 
-        if self.countdown > 0:
+        if self.countdown > 1:
             count_text = font_large.render("READY", True, RED)
         else:
             count_text = font_large.render("GO!", True, RED)
