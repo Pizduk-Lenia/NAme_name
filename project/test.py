@@ -7,11 +7,13 @@ import math
 
 # Инициализация Pygame
 pygame.init()
+# Инициализация аудио системы
+pygame.mixer.init(frequency=44100, size=-16, channels=2, buffer=4096)
 
 # Настройки экрана
 WIDTH, HEIGHT = 1280, 720  
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Армрестлинг")
+pygame.display.set_caption("IRON HAND")
 
 # Цвета и шрифты
 WHITE = (255, 255, 255)
@@ -27,6 +29,7 @@ ORANGE = (255, 165, 0)
 font_large = pygame.font.SysFont('Arial', 72, bold=True)
 font_medium = pygame.font.SysFont('Arial', 48)
 font_small = pygame.font.SysFont('Arial', 24)
+
 
 class Game:
     def __init__(self):
@@ -44,9 +47,10 @@ class Game:
         self.reset_game_state()
         
         # Загрузка ресурсов
-        self.animation_frames = self.load_animation_frames()
-        self.current_frame = 35
+        self.animation_frames = None
+        self.current_frame = None
         self.blue_background = self.create_blue_background()
+        self.sound_effect = None
         
         # Создание кнопок
         self.buttons = {
@@ -56,9 +60,10 @@ class Game:
         }
     
     def reset_game_state(self):
-        self.current_frame = self.take_length_picture()//2
+        self.base_path_to = f"files_of_game/{self.selected_level + 1}/frames/"
+        self.current_frame = self.take_length_picture(self.base_path_to, ".jpg")//2 if self.take_length_picture(self.base_path_to, ".jpg") else None
         self.animation_frames = self.load_animation_frames()
-        self.high_limit_frames = self.take_length_picture()
+        self.high_limit_frames = self.take_length_picture(self.base_path_to, ".jpg")
         self.low_limit_frames = 1
         self.score = 0
         self.press_count = 0
@@ -80,14 +85,46 @@ class Game:
         self.qte_key = None
         self.qte_timer = 0
         self.qte_duration = 2  
+        self.sound_effect = self.load_sound_effect()
+        self.music = self.load_music()
+        self.sound_game_effect = self.load_sound_effect_in_game()
+        self.temp_playing = 0
 
-    def take_length_picture(self):
+    def load_sound_effect(self):
+        if(self.state != "LEVEL_PREVIEW"): return None
+        effect_ = {}
+        for i in range(2):
+            sound_effect = pygame.mixer.Sound(f"project/files_of_game/{self.selected_level + 1}/music/sound_effect/{i + 1}.wav")
+            sound_effect.set_volume(0.7)
+            effect_[i + 1] = sound_effect
+        return effect_
+    
+    def load_sound_effect_in_game(self):
+        if(self.state != "LEVEL_PREVIEW"): return None
+
+        count_of_effect = self.take_length_picture(f"files_of_game/{self.selected_level + 1}/music/sound_effect_in_game/", ".wav")
+        effect_ = {}
+        for i in range(count_of_effect):
+            sound_effect = pygame.mixer.Sound(f"project/files_of_game/{self.selected_level + 1}/music/sound_effect_in_game/{i + 1}.wav")
+            sound_effect.set_volume(0.7)
+            effect_[i + 1] = sound_effect
+        return effect_
+    
+    def load_music(self):
+        if(self.state != "LEVEL_PREVIEW"): return None
+        music = pygame.mixer.Sound(f"project/files_of_game/{self.selected_level + 1}/music/sound.mp3")
+        music.set_volume(0.01)
+        return music
+
+    def take_length_picture(self, path:str, sp:str):
+        if(self.state != "LEVEL_PREVIEW"): return None
+
         base_path = os.path.dirname(os.path.abspath(__file__))
-        frames_dir = os.path.join(base_path, f"files_of_game/{self.selected_level + 1}/frames/")
+        frames_dir = os.path.join(base_path, path)
 
         try:
             frame_files = sorted(
-            [f for f in os.listdir(frames_dir) if f.endswith('.jpg')],
+            [f for f in os.listdir(frames_dir) if f.endswith(sp)],
             key=lambda x: int(x.split('.')[0])
             )   
         except:
@@ -97,9 +134,11 @@ class Game:
 
 
     def load_animation_frames(self):
+        if(self.state != "LEVEL_PREVIEW"): return None
+
         frames = {}
         base_path = os.path.dirname(os.path.abspath(__file__))
-        lenght_ = self.take_length_picture()
+        lenght_ = self.take_length_picture(f"files_of_game/{self.selected_level + 1}/frames/", ".jpg")
         
         for i in range(lenght_, 0, -1):
             if (self.selected_level == 1): frame_idx = i
@@ -171,13 +210,17 @@ class Game:
             self.last_countdown_update = time.time()
             if self.countdown <= 0:
                 self.state = "GAME"
+                self.music.play(loops=-1)
                 self.start_time = time.time()
     
+    def choise_effect(self):
+        self.temp_playing = random.choice(list(self.sound_game_effect.keys()))
+        self.sound_game_effect[self.temp_playing].play()
+
     def update_gameplay(self):
         current_time = time.time()
         level = self.levels[self.selected_level]
 
-        
         # Обновление стамины
         if current_time - self.last_stamina_update >= 0.1:
             if self.presses_in_period > 0:
@@ -207,13 +250,23 @@ class Game:
         # Проверка QTE
         if not self.qte_active and random.random() < level["qte_chance"] and current_time - self.start_time > 5:
             self.start_qte_event()
+            if(self.temp_playing != 0):
+                 self.sound_game_effect[self.temp_playing].stop()
+            self.choise_effect() 
         
         if self.qte_active and current_time - self.qte_timer > self.qte_duration:
             self.qte_active = False
             for _ in range(2):
                 self.update_frame(False)
-            self.trigger_screen_shake(15, 1.5)
-    
+            self.trigger_screen_shake(10, 1)
+
+    def update_music_mov(self):
+        self.music.stop()
+        if(self.temp_playing != 0):
+            self.sound_game_effect[self.temp_playing].stop()
+        if(self.level_completed): self.sound_effect[1].play()
+        else: self.sound_effect[2].play()
+
     def update_frame(self, success):
         if success and self.current_frame < self.high_limit_frames:
             self.current_frame += 1
@@ -221,6 +274,7 @@ class Game:
             if self.current_frame == self.high_limit_frames:
                 self.level_completed = True
                 self.state = "RESULT"
+                self.update_music_mov()
                 self.trigger_screen_shake(20, 2)
         elif not success and self.current_frame > self.low_limit_frames:
             self.current_frame -= 1
@@ -228,7 +282,8 @@ class Game:
             if self.current_frame == self.low_limit_frames  :
                 self.level_completed = False
                 self.state = "RESULT"
-                self.trigger_screen_shake(25, 2.5)
+                self.update_music_mov()
+                self.trigger_screen_shake(15, 1.2)
 
         print(f"Сейчас {self.current_frame} кадр")
     
@@ -274,7 +329,7 @@ class Game:
             button.draw(screen)
     
     def draw_level_preview(self):
-        screen.blit(self.animation_frames[35], (0, 0))
+        screen.blit(self.animation_frames[self.current_frame], (0, 0))
         overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
         overlay.fill((0, 0, 0, 180))
         screen.blit(overlay, (0, 0))
@@ -286,7 +341,7 @@ class Game:
         self.buttons["start"].draw(screen)
     
     def draw_countdown(self):
-        screen.blit(self.animation_frames[35], (0, 0))  
+        screen.blit(self.animation_frames[self.current_frame], (0, 0))  
         overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
         overlay.fill((0, 0, 0, 150))
         screen.blit(overlay, (0, 0))
@@ -296,6 +351,23 @@ class Game:
         else:
             count_text = font_large.render("GO!", True, RED)
         screen.blit(count_text, (WIDTH//2-count_text.get_width()//2, HEIGHT//2-count_text.get_height()//2))
+    
+    
+    def draw_stamina_bar(self):
+        bar_width = 200
+        bar_height = 20
+        x = WIDTH - bar_width - 20
+        y = 20
+        
+        pygame.draw.rect(screen, GRAY, (x, y, bar_width, bar_height))
+        fill_width = (self.stamina / 100) * bar_width
+        color = GREEN if self.stamina > 50 else ORANGE if self.stamina > 25 else RED
+        pygame.draw.rect(screen, color, (x, y, fill_width, bar_height))
+        pygame.draw.rect(screen, BLACK, (x, y, bar_width, bar_height), 2)
+        
+        text = font_small.render(f"Выносливость: {int(self.stamina)}%", True, WHITE)
+        screen.blit(text, (x, y + bar_height + 5))
+    
     
     def draw_game(self):
         offset = self.get_screen_shake_offset()
@@ -315,22 +387,7 @@ class Game:
         # QTE
         if self.qte_active:
             self.draw_qte()
-    
-    def draw_stamina_bar(self):
-        bar_width = 200
-        bar_height = 20
-        x = WIDTH - bar_width - 20
-        y = 20
-        
-        pygame.draw.rect(screen, GRAY, (x, y, bar_width, bar_height))
-        fill_width = (self.stamina / 100) * bar_width
-        color = GREEN if self.stamina > 50 else ORANGE if self.stamina > 25 else RED
-        pygame.draw.rect(screen, color, (x, y, fill_width, bar_height))
-        pygame.draw.rect(screen, BLACK, (x, y, bar_width, bar_height), 2)
-        
-        text = font_small.render(f"Выносливость: {int(self.stamina)}%", True, WHITE)
-        screen.blit(text, (x, y + bar_height + 5))
-    
+
     def draw_qte(self):
         panel = pygame.Surface((400, 150), pygame.SRCALPHA)
         panel.fill((0, 0, 0, 0))
