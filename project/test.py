@@ -113,7 +113,7 @@ class Game:
     def load_music(self):
         if(self.state != "LEVEL_PREVIEW"): return None
         music = pygame.mixer.Sound(f"project/files_of_game/{self.selected_level + 1}/music/sound.mp3")
-        music.set_volume(0.01)
+        music.set_volume(0.1)
         return music
 
     def take_length_picture(self, path:str, sp:str):
