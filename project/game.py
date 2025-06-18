@@ -31,8 +31,8 @@ class Game:
         # Создание кнопок
         self.buttons = {
             "menu": [Button(WIDTH//2-150, 200+i*120, 300, 80, level["name"]) for i, level in enumerate(self.levels)],
-            "start": Button(WIDTH//2-100, 400, 200, 60, "СТАРТ"),
-            "back": Button(WIDTH//2-100, 400, 200, 60, "МЕНЮ")
+            "start": Button(WIDTH//2-100, HEIGHT//2, 200, 60, "СТАРТ"),
+            "back": Button(WIDTH//2-100, HEIGHT//2, 200, 60, "МЕНЮ")
         }
     
     def reset_game_state(self):
