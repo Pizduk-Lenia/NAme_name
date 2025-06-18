@@ -16,7 +16,7 @@ ORANGE = (255, 165, 0)
 # Инициализация Pygame
 pygame.init()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("IRON HAND")
+pygame.display.set_caption("IRON HANDS")
 
 # Шрифты
 font_large = pygame.font.SysFont('Arial', 72, bold=True)

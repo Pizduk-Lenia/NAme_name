@@ -10,11 +10,11 @@ from Button import Button
 class Game:
     def __init__(self):
         self.levels = [
-            {"name": "Новичок", "required_speed": 3, "required_presses": 15, 
+            {"name": "Новичок", "required_speed": 3, 
              "stamina_drain": 0.3, "stamina_recover": 0.3, "qte_chance": 0.003},
-            {"name": "Средний", "required_speed": 5, "required_presses": 25, 
+            {"name": "Средний", "required_speed": 5, 
              "stamina_drain": 0.4, "stamina_recover": 0.25, "qte_chance": 0.005},
-            {"name": "Профи", "required_speed": 7, "required_presses": 35, 
+            {"name": "Профи", "required_speed": 7,
              "stamina_drain": 0.5, "stamina_recover": 0.2, "qte_chance": 0.007}
         ]
         
@@ -30,9 +30,9 @@ class Game:
         
         # Создание кнопок
         self.buttons = {
-            "menu": [Button(WIDTH//2-150, 200+i*120, 300, 80, level["name"]) for i, level in enumerate(self.levels)],
-            "start": Button(WIDTH//2-100, HEIGHT//2, 200, 60, "СТАРТ"),
-            "back": Button(WIDTH//2-100, HEIGHT//2, 200, 60, "МЕНЮ")
+            "menu": [Button(WIDTH//2-150, 300+i*120, 300, 80, level["name"]) for i, level in enumerate(self.levels)],
+            "start": Button(WIDTH//2-100, HEIGHT-200, 200, 60, "СТАРТ"),
+            "back": Button(WIDTH//2-100, HEIGHT-200, 200, 60, "МЕНЮ")
         }
     
     def reset_game_state(self):
@@ -41,7 +41,6 @@ class Game:
         self.animation_frames = self.load_animation_frames()
         self.high_limit_frames = self.take_length_picture(self.base_path_to, ".jpg")
         self.low_limit_frames = 1
-        self.score = 0
         self.press_count = 0
         self.start_time = 0
         self.countdown = 3
@@ -49,7 +48,6 @@ class Game:
         self.level_completed = False
         self.last_press_time = 0
         self.current_speed = 0
-        self.total_presses = 0
         self.last_speed_update = 0
         self.presses_in_period = 0
         self.stamina = 100
@@ -216,8 +214,7 @@ class Game:
             # Проверка условий для изменения кадра
             efficiency = 0.5 + (self.stamina / 200)
             
-            if (self.current_speed >= level['required_speed']/5 * efficiency * 0.7 and 
-                self.total_presses >= level['required_presses']/5 * 0.7):
+            if (self.current_speed >= level['required_speed']/5 * efficiency * 0.7):
                 self.update_frame(True)
             else:
                 self.update_frame(False)
@@ -245,7 +242,6 @@ class Game:
     def update_frame(self, success):
         if success and self.current_frame < self.high_limit_frames:
             self.current_frame += 1
-            self.score += 1
             if self.current_frame == self.high_limit_frames:
                 self.level_completed = True
                 self.state = "RESULT"
@@ -253,7 +249,6 @@ class Game:
                 self.trigger_screen_shake(20, 2)
         elif not success and self.current_frame > self.low_limit_frames:
             self.current_frame -= 1
-            self.score -= 1
             if self.current_frame == self.low_limit_frames  :
                 self.level_completed = False
                 self.state = "RESULT"

@@ -37,7 +37,6 @@ def main():
                     
                     if event.key == pygame.K_SPACE and not game.qte_active and game.stamina > 0:
                         game.press_count += 1
-                        game.total_presses += 1
                         game.presses_in_period += 1
                         game.last_press_time = time.time()
                         game.stamina -= game.levels[game.selected_level]["stamina_drain"]
